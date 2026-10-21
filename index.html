@@ -1,4 +1,4 @@
-    
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,30 +14,61 @@
       margin: 0;
       padding: 24px;
     }
+
     main {
-      max-width: 440px;
-      margin: 55px auto;
+      max-width: 600px;
+      margin: 35px auto;
       background: white;
       padding: 26px;
       border-radius: 16px;
       box-shadow: 0 4px 24px #00000010;
     }
-    input, button {
+
+    input, button, select {
       width: 100%;
-      padding: 13px;
+      padding: 12px;
       margin-top: 10px;
       box-sizing: border-box;
       font-size: 16px;
       border-radius: 8px;
     }
-    input { border: 1px solid #ccd7d0; }
+
+    input, select {
+      border: 1px solid #ccd7d0;
+      background: white;
+    }
+
     button {
       background: #176b49;
       color: white;
       border: 0;
       cursor: pointer;
     }
-    #status { overflow-wrap: anywhere; }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #status, #bookingStatus {
+      overflow-wrap: anywhere;
+    }
+
+    .booking-card {
+      border: 1px solid #ccd7d0;
+      border-radius: 10px;
+      padding: 14px;
+      margin: 14px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .booking-card h3 {
+      margin-top: 0;
+    }
+
+    .booking-details {
+      line-height: 1.7;
+    }
   </style>
 </head>
 <body>
@@ -47,35 +78,49 @@
 
     <form id="loginForm">
       <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="username" required>
+      <input
+        id="email"
+        type="email"
+        autocomplete="username"
+        required
+      >
 
       <label for="password">Password</label>
-      <input id="password" type="password"
-        autocomplete="current-password" required>
+      <input
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        required
+      >
 
       <button id="loginButton" type="submit">Login</button>
     </form>
 
-   
-<section id="dashboard" hidden>
-  <h2>Admin access verified</h2>
-  <p id="account"></p>
-  <button id="logoutButton" type="button">Logout</button>
+    <section id="dashboard" hidden>
+      <h2>Admin access verified</h2>
+      <p id="account"></p>
+      <button id="logoutButton" type="button">Logout</button>
 
-  <hr>
-  <h2>Customer Bookings</h2>
-  <button id="refreshBookings" type="button">Refresh Bookings</button>
-  <p id="bookingStatus" role="status"></p>
-  <div id="bookingList"></div>
-</section>
+      <hr>
 
+      <h2>Customer Bookings</h2>
+      <button id="refreshBookings" type="button">
+        Refresh Bookings
+      </button>
+
+      <p id="bookingStatus" role="status" aria-live="polite"></p>
+      <div id="bookingList"></div>
+    </section>
 
     <p id="status" role="status" aria-live="polite"></p>
   </main>
 
   <script>
-    const SUPABASE_URL = "https://wbhttdwajcdidkioatqn.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_BQee1ylNh02Ii4PaM13Ckg_mlBmgrnc";
+    const SUPABASE_URL =
+      "https://wbhttdwajcdidkioatqn.supabase.co";
+
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_BQee1ylNh02Ii4PaM13Ckg_mlBmgrnc";
 
     const client = window.supabase.createClient(
       SUPABASE_URL,
@@ -85,6 +130,9 @@
     const form = document.getElementById("loginForm");
     const dashboard = document.getElementById("dashboard");
     const status = document.getElementById("status");
+    const bookingStatus = document.getElementById("bookingStatus");
+    const bookingList = document.getElementById("bookingList");
+    const loginButton = document.getElementById("loginButton");
 
     async function verifyAdmin(user) {
       const { data, error } = await client
@@ -92,249 +140,222 @@
         .select("user_id")
         .eq("user_id", user.id)
         .maybeSingle();
-if (error) {
-  throw new Error(
-    "Admin check failed: " + error.message
-  );
-}
-     
+
+      if (error) {
+        throw new Error("Admin check failed: " + error.message);
+      }
 
       if (!data) {
         await client.auth.signOut();
-        throw new Error("This account is not an authorized admin.");
+        throw new Error(
+          "This account is not an authorized admin."
+        );
       }
 
       form.hidden = true;
       dashboard.hidden = false;
-              loadBookings();
+
       document.getElementById("account").textContent =
         "Signed in as " + (user.email || "Admin");
+
       status.textContent = "";
+      await loadBookings();
     }
 
     form.addEventListener("submit", async event => {
       event.preventDefault();
-      const button = document.getElementById("loginButton");
-      button.disabled = true;
+      loginButton.disabled = true;
       status.textContent = "Signing in...";
 
       try {
-        const { data, error } = await client.auth.signInWithPassword({
-          email: document.getElementById("email").value.trim(),
-          password: document.getElementById("password").value
-        });
+        const { data, error } = await client.auth
+          .signInWithPassword({
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value
+          });
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
+
         await verifyAdmin(data.user);
       } catch (error) {
         status.textContent = error.message || "Login failed.";
       } finally {
-        button.disabled = false;
+        loginButton.disabled = false;
       }
     });
 
     document.getElementById("logoutButton").addEventListener(
-      "click", async () => {
-        await client.auth.signOut();
+      "click",
+      async () => {
+        status.textContent = "Signing out...";
+
+        const { error } = await client.auth.signOut();
+
+        if (error) {
+          status.textContent = "Logout failed: " + error.message;
+          return;
+        }
+
         dashboard.hidden = true;
         form.hidden = false;
+        document.getElementById("password").value = "";
+        bookingList.replaceChildren();
+        bookingStatus.textContent = "";
         status.textContent = "Logged out.";
       }
     );
-      
-    
 
     async function loadBookings() {
-      const bookingStatus = document.getElementById("bookingStatus");
-      const bookingList = document.getElementById("bookingList");
+      const refreshButton =
+        document.getElementById("refreshBookings");
 
+      refreshButton.disabled = true;
       bookingStatus.textContent = "Loading bookings...";
       bookingList.replaceChildren();
 
-      const { data, error } = await client
-        .from("bookings")
-        .select("*")
-        .limit(100);
+      try {
+        const { data, error } = await client
+          .from("bookings")
+          .select("*")
+          .limit(100);
 
-      if (error) {
+        if (error) {
+          bookingStatus.textContent =
+            "Could not load bookings: " + error.message;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          bookingStatus.textContent = "No bookings found.";
+          return;
+        }
+
+        bookingStatus.textContent =
+          "Bookings found: " + data.length;
+
+        data.forEach(booking => {
+          const card = document.createElement("div");
+          card.className = "booking-card";
+
+          const heading = document.createElement("h3");
+          heading.textContent =
+            booking.customer_name || "Customer";
+
+          const details = document.createElement("p");
+          details.className = "booking-details";
+
+          const detailsText = () => [
+            "Phone: " + (booking.customer_phone || "N/A"),
+            "Service: " + (booking.service_name || "N/A"),
+            "Area: " + (booking.customer_area || "N/A"),
+            "Date: " + (booking.preferred_date || "N/A"),
+            "Status: " + (booking.status || "pending")
+          ].join(" | ");
+
+          details.textContent = detailsText();
+
+          const statusLabel = document.createElement("label");
+          statusLabel.textContent = "Booking status";
+
+          const statusSelect = document.createElement("select");
+          statusSelect.setAttribute(
+            "aria-label",
+            "Booking status for " +
+              (booking.customer_name || "customer")
+          );
+
+          const currentStatus =
+            String(booking.status || "pending").toLowerCase();
+
+          const statuses = [
+            "pending",
+            "accepted",
+            "completed",
+            "cancelled"
+          ];
+
+          if (!statuses.includes(currentStatus)) {
+            statuses.push(currentStatus);
+          }
+
+          statuses.forEach(value => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent =
+              value.charAt(0).toUpperCase() + value.slice(1);
+            option.selected = value === currentStatus;
+            statusSelect.appendChild(option);
+          });
+
+          const saveButton = document.createElement("button");
+          saveButton.type = "button";
+          saveButton.textContent = "Update Status";
+
+          const statusMessage = document.createElement("p");
+          statusMessage.setAttribute("role", "status");
+
+          saveButton.addEventListener("click", async () => {
+            saveButton.disabled = true;
+            statusSelect.disabled = true;
+            statusMessage.textContent = "Updating status...";
+
+            try {
+              const { data: updatedRows, error } = await client
+                .from("bookings")
+                .update({ status: statusSelect.value })
+                .eq("id", booking.id)
+                .select("id, status");
+
+              if (error) {
+                throw error;
+              }
+
+              if (!updatedRows || updatedRows.length === 0) {
+                throw new Error(
+                  "No booking was updated. Check database permissions."
+                );
+              }
+
+              booking.status = updatedRows[0].status;
+              details.textContent = detailsText();
+              statusMessage.textContent =
+                "Status updated successfully.";
+
+            } catch (error) {
+              statusMessage.textContent =
+                "Update failed: " + error.message;
+            } finally {
+              saveButton.disabled = false;
+              statusSelect.disabled = false;
+            }
+          });
+
+          card.append(
+            heading,
+            details,
+            statusLabel,
+            statusSelect,
+            saveButton,
+            statusMessage
+          );
+
+          bookingList.appendChild(card);
+        });
+
+      } catch (error) {
         bookingStatus.textContent =
           "Could not load bookings: " + error.message;
-        return;
+      } finally {
+        refreshButton.disabled = false;
       }
-
-      if (!data || data.length === 0) {
-        bookingStatus.textContent = "No bookings found.";
-        return;
-      }
-
-      bookingStatus.textContent = "Bookings found: " + data.length;
-
-
-data.forEach(booking => {
-  const card = document.createElement("div");
-  const heading = document.createElement("h3");
-  heading.textContent = booking.customer_name || "Customer";
-
-  const details = document.createElement("p");
-  details.textContent = [
-    "Phone: " + (booking.customer_phone || "N/A"),
-    "Service: " + (booking.service_name || "N/A"),
-    "Area: " + (booking.customer_area || "N/A"),
-    "Date: " + (booking.preferred_date || "N/A"),
-    "Status: " + (booking.status || "Pending")
-  ].join(" | ");
-
- 
-  ["pending", "accepted", "completed", "cancelled"].forEach(status => {
-    const option = document.createElement("option");
-    option.value = status;
-    option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-    option.selected = (booking.status || "pending").toLowerCase() === status;
-    statusSelect.appendChild(option);
-  });
-
-  const saveButton = document.createElement("button");
-  saveButton.textContent = "Update Status";
-
-  const statusMessage = document.createElement("p");
-statusSelect.style.display = "block";
-statusSelect.style.margin = "10px 0";
-statusSelect.style.padding = "8px";
-statusSelect.style.width = "100%";
-
-saveButton.style.display = "block";
-saveButton.style.margin = "10px 0";
-saveButton.style.padding = "8px 14px";
-
-statusMessage.style.margin = "8px 0";
-  saveButton.addEventListener("click", async () => {
-    saveButton.disabled = true;
-    statusMessage.textContent = "Updating...";
-
-    const { error } = await client
-      .from("bookings")
-      .update({ status: statusSelect.value })
-      .eq("id", booking.id);
-
-    saveButton.disabled = false;
-
-    if (error) {
-      statusMessage.textContent = "Update failed: " + error.message;
-      return;
     }
 
-    statusMessage.textContent = "Status updated successfully.";
-    await loadBookings();
-  });
-
-  card.append(heading, details, statusSelect, saveButton, statusMessage);
-  card.style.border = "1px solid #ccc";
-  card.style.padding = "12px";
-  card.style.margin = "12px 0";
-  bookingList.appendChild(card);
-});
-
-    }
-
-  
-async function loadBookings() {
-  const bookingStatus = document.getElementById("bookingStatus");
-  const bookingList = document.getElementById("bookingList");
-
-  bookingStatus.textContent = "Loading bookings...";
-  bookingList.replaceChildren();
-
-  const { data, error } = await client
-    .from("bookings")
-    .select("*")
-    .limit(100);
-
-  if (error) {
-    bookingStatus.textContent =
-      "Could not load bookings: " + error.message;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    bookingStatus.textContent = "No bookings found.";
-    return;
-  }
-
-  bookingStatus.textContent = "Bookings found: " + data.length;
-
-  data.forEach(booking => {
-    const card = document.createElement("div");
-    const heading = document.createElement("h3");
-    heading.textContent = booking.customer_name || "Customer";
-
-    const details = document.createElement("p");
-    details.textContent = [
-      "Phone: " + (booking.customer_phone || "N/A"),
-      "Service: " + (booking.service_name || "N/A"),
-      "Area: " + (booking.customer_area || "N/A"),
-      "Date: " + (booking.preferred_date || "N/A"),
-      "Status: " + (booking.status || "Pending")
-    ].join(" | ");
-
-    const statusSelect = document.createElement("select");
-    statusSelect.style.display = "block";
-    statusSelect.style.margin = "10px 0";
-    statusSelect.style.padding = "8px";
-    statusSelect.style.width = "100%";
-
-    ["pending", "accepted", "completed", "cancelled"].forEach(status => {
-      const option = document.createElement("option");
-      option.value = status;
-      option.textContent =
-        status.charAt(0).toUpperCase() + status.slice(1);
-      option.selected =
-        (booking.status || "pending").toLowerCase() === status;
-      statusSelect.appendChild(option);
-    });
-
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Update Status";
-    saveButton.style.display = "block";
-    saveButton.style.margin = "10px 0";
-    saveButton.style.padding = "8px 14px";
-
-    const statusMessage = document.createElement("p");
-    statusMessage.style.margin = "8px 0";
-
-    saveButton.addEventListener("click", async () => {
-      saveButton.disabled = true;
-      statusMessage.textContent = "Updating...";
-
-      const { error } = await client
-        .from("bookings")
-        .update({ status: statusSelect.value })
-        .eq("id", booking.id);
-
-      saveButton.disabled = false;
-
-      if (error) {
-        statusMessage.textContent =
-          "Update failed: " + error.message;
-        return;
-      }
- 
-      await loadBookings();
-    });
-
-    card.append(heading, details, statusSelect, saveButton, statusMessage);
-    card.style.border = "1px solid #ccc";
-    card.style.padding = "12px";
-    card.style.margin = "12px 0";
-    bookingList.appendChild(card);
-  });
-}
-
-document.getElementById("refreshBookings").addEventListener(
-  "click", loadBookings
-);
-
-    
-    </script>
+    document.getElementById("refreshBookings").addEventListener(
+      "click",
+      loadBookings
+    );
+  </script>
 </body>
 </html>
-
