@@ -185,7 +185,16 @@ data.forEach(booking => {
   ].join(" | ");
 
   const statusSelect = document.createElement("select");
+statusSelect.style.display = "block";
+statusSelect.style.margin = "10px 0";
+statusSelect.style.padding = "8px";
+statusSelect.style.width = "100%";
 
+saveButton.style.display = "block";
+saveButton.style.margin = "10px 0";
+saveButton.style.padding = "8px 14px";
+
+statusMessage.style.margin = "8px 0";
   ["pending", "accepted", "completed", "cancelled"].forEach(status => {
     const option = document.createElement("option");
     option.value = status;
