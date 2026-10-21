@@ -169,26 +169,63 @@ if (error) {
 
       bookingStatus.textContent = "Bookings found: " + data.length;
 
-      data.forEach(booking => {
-        const card = document.createElement("div");
-        const heading = document.createElement("h3");
-        heading.textContent = booking.customer_name || "Customer";
 
-        const details = document.createElement("p");
-        details.textContent = [
-          "Phone: " + (booking.customer_phone || "N/A"),
-          "Service: " + (booking.service_name || "N/A"),
-          "Area: " + (booking.customer_area || "N/A"),
-          "Date: " + (booking.preferred_date || "N/A"),
-          "Status: " + (booking.status || "Pending")
-        ].join(" | ");
+data.forEach(booking => {
+  const card = document.createElement("div");
+  const heading = document.createElement("h3");
+  heading.textContent = booking.customer_name || "Customer";
 
-        card.append(heading, details);
-        card.style.border = "1px solid #ccc";
-        card.style.padding = "12px";
-        card.style.margin = "12px 0";
-        bookingList.appendChild(card);
-      });
+  const details = document.createElement("p");
+  details.textContent = [
+    "Phone: " + (booking.customer_phone || "N/A"),
+    "Service: " + (booking.service_name || "N/A"),
+    "Area: " + (booking.customer_area || "N/A"),
+    "Date: " + (booking.preferred_date || "N/A"),
+    "Status: " + (booking.status || "Pending")
+  ].join(" | ");
+
+  const statusSelect = document.createElement("select");
+
+  ["pending", "accepted", "completed", "cancelled"].forEach(status => {
+    const option = document.createElement("option");
+    option.value = status;
+    option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    option.selected = (booking.status || "pending").toLowerCase() === status;
+    statusSelect.appendChild(option);
+  });
+
+  const saveButton = document.createElement("button");
+  saveButton.textContent = "Update Status";
+
+  const statusMessage = document.createElement("p");
+
+  saveButton.addEventListener("click", async () => {
+    saveButton.disabled = true;
+    statusMessage.textContent = "Updating...";
+
+    const { error } = await client
+      .from("bookings")
+      .update({ status: statusSelect.value })
+      .eq("id", booking.id);
+
+    saveButton.disabled = false;
+
+    if (error) {
+      statusMessage.textContent = "Update failed: " + error.message;
+      return;
+    }
+
+    statusMessage.textContent = "Status updated successfully.";
+    await loadBookings();
+  });
+
+  card.append(heading, details, statusSelect, saveButton, statusMessage);
+  card.style.border = "1px solid #ccc";
+  card.style.padding = "12px";
+  card.style.margin = "12px 0";
+  bookingList.appendChild(card);
+});
+
     }
 
     document.getElementById("refreshBookings").addEventListener(
