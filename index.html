@@ -16,7 +16,7 @@
     }
 
     main {
-      max-width: 600px;
+      max-width: 650px;
       margin: 35px auto;
       background: white;
       padding: 26px;
@@ -36,6 +36,7 @@
     input, select {
       border: 1px solid #ccd7d0;
       background: white;
+      color: #17382b;
     }
 
     button {
@@ -67,7 +68,35 @@
     }
 
     .booking-details {
-      line-height: 1.7;
+      line-height: 1.8;
+    }
+
+    .field-label {
+      display: block;
+      margin-top: 16px;
+      font-weight: bold;
+    }
+
+    .earnings {
+      border: 1px solid #ccd7d0;
+      background: #f7faf8;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .earnings p {
+      margin: 10px 0;
+    }
+
+    .earnings strong {
+      color: #176b49;
+    }
+
+    .note {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #52665b;
     }
   </style>
 </head>
@@ -103,6 +132,21 @@
 
       <hr>
 
+      <h2>Commission Dashboard</h2>
+      <div class="earnings" aria-live="polite">
+        <p>Completed revenue: <strong id="totalRevenue">Rs. 0</strong></p>
+        <p>Your commission (15%): <strong id="totalCommission">Rs. 0</strong></p>
+        <p>Completed bookings with a price: <strong id="pricedBookings">0</strong></p>
+        <p class="note">
+          Commission is an estimate calculated from saved final prices
+          for completed bookings only. It does not mean payment has
+          been collected. This dashboard currently counts up to 100
+          bookings loaded from the database.
+        </p>
+      </div>
+
+      <hr>
+
       <h2>Customer Bookings</h2>
       <button id="refreshBookings" type="button">
         Refresh Bookings
@@ -122,6 +166,8 @@
     const SUPABASE_PUBLISHABLE_KEY =
       "sb_publishable_BQee1ylNh02Ii4PaM13Ckg_mlBmgrnc";
 
+    const COMMISSION_RATE = 0.15;
+
     const client = window.supabase.createClient(
       SUPABASE_URL,
       SUPABASE_PUBLISHABLE_KEY
@@ -133,6 +179,51 @@
     const bookingStatus = document.getElementById("bookingStatus");
     const bookingList = document.getElementById("bookingList");
     const loginButton = document.getElementById("loginButton");
+
+    function formatRupees(amount) {
+      return "Rs. " + Number(amount).toLocaleString("en-PK", {
+        maximumFractionDigits: 2
+      });
+    }
+
+    function updateEarnings(bookings) {
+      let totalRevenue = 0;
+      let pricedBookings = 0;
+
+      bookings.forEach(booking => {
+        if (String(booking.status || "").toLowerCase() !== "completed") {
+          return;
+        }
+
+        if (
+          booking.final_price === null ||
+          booking.final_price === undefined ||
+          booking.final_price === ""
+        ) {
+          return;
+        }
+
+        const price = Number(booking.final_price);
+
+        if (!Number.isFinite(price) || price < 0) {
+          return;
+        }
+
+        totalRevenue += price;
+        pricedBookings += 1;
+      });
+
+      const commission = totalRevenue * COMMISSION_RATE;
+
+      document.getElementById("totalRevenue").textContent =
+        formatRupees(totalRevenue);
+
+      document.getElementById("totalCommission").textContent =
+        formatRupees(commission);
+
+      document.getElementById("pricedBookings").textContent =
+        String(pricedBookings);
+    }
 
     async function verifyAdmin(user) {
       const { data, error } = await client
@@ -203,6 +294,7 @@
         document.getElementById("password").value = "";
         bookingList.replaceChildren();
         bookingStatus.textContent = "";
+        updateEarnings([]);
         status.textContent = "Logged out.";
       }
     );
@@ -229,8 +321,11 @@
 
         if (!data || data.length === 0) {
           bookingStatus.textContent = "No bookings found.";
+          updateEarnings([]);
           return;
         }
+
+        updateEarnings(data);
 
         bookingStatus.textContent =
           "Bookings found: " + data.length;
@@ -251,12 +346,41 @@
             "Service: " + (booking.service_name || "N/A"),
             "Area: " + (booking.customer_area || "N/A"),
             "Date: " + (booking.preferred_date || "N/A"),
-            "Status: " + (booking.status || "pending")
+            "Status: " + (booking.status || "pending"),
+            "Final price: " +
+              (
+                booking.final_price !== null &&
+                booking.final_price !== undefined &&
+                booking.final_price !== ""
+              ? formatRupees(booking.final_price)
+              : "Not entered"
+              )
           ].join(" | ");
 
           details.textContent = detailsText();
 
+          const priceLabel = document.createElement("label");
+          priceLabel.className = "field-label";
+          priceLabel.textContent = "Final agreed price (Rs.)";
+
+          const priceInput = document.createElement("input");
+          priceInput.type = "number";
+          priceInput.min = "0";
+          priceInput.step = "0.01";
+          priceInput.placeholder = "Enter final price";
+          priceInput.setAttribute(
+            "aria-label",
+            "Final agreed price for " +
+              (booking.customer_name || "customer")
+          );
+          priceInput.value =
+            booking.final_price !== null &&
+            booking.final_price !== undefined
+              ? String(booking.final_price)
+              : "";
+
           const statusLabel = document.createElement("label");
+          statusLabel.className = "field-label";
           statusLabel.textContent = "Booking status";
 
           const statusSelect = document.createElement("select");
@@ -291,22 +415,44 @@
 
           const saveButton = document.createElement("button");
           saveButton.type = "button";
-          saveButton.textContent = "Update Status";
+          saveButton.textContent = "Save Price & Status";
 
           const statusMessage = document.createElement("p");
           statusMessage.setAttribute("role", "status");
+          statusMessage.setAttribute("aria-live", "polite");
 
           saveButton.addEventListener("click", async () => {
+            const priceText = priceInput.value.trim();
+
+            let finalPrice = null;
+
+            if (priceText !== "") {
+              finalPrice = Number(priceText);
+
+              if (
+                !Number.isFinite(finalPrice) ||
+                finalPrice < 0
+              ) {
+                statusMessage.textContent =
+                  "Please enter a valid price of Rs. 0 or more.";
+                return;
+              }
+            }
+
             saveButton.disabled = true;
             statusSelect.disabled = true;
-            statusMessage.textContent = "Updating status...";
+            priceInput.disabled = true;
+            statusMessage.textContent = "Saving price and status...";
 
             try {
               const { data: updatedRows, error } = await client
                 .from("bookings")
-                .update({ status: statusSelect.value })
+                .update({
+                  status: statusSelect.value,
+                  final_price: finalPrice
+                })
                 .eq("id", booking.id)
-                .select("id, status");
+                .select("id, status, final_price");
 
               if (error) {
                 throw error;
@@ -319,22 +465,29 @@
               }
 
               booking.status = updatedRows[0].status;
+              booking.final_price = updatedRows[0].final_price;
+
               details.textContent = detailsText();
+              updateEarnings(data);
+
               statusMessage.textContent =
-                "Status updated successfully.";
+                "Price and status saved successfully.";
 
             } catch (error) {
               statusMessage.textContent =
-                "Update failed: " + error.message;
+                "Save failed: " + error.message;
             } finally {
               saveButton.disabled = false;
               statusSelect.disabled = false;
+              priceInput.disabled = false;
             }
           });
 
           card.append(
             heading,
             details,
+            priceLabel,
+            priceInput,
             statusLabel,
             statusSelect,
             saveButton,
@@ -356,6 +509,21 @@
       "click",
       loadBookings
     );
+
+    client.auth.getSession().then(async ({ data, error }) => {
+      if (error) {
+        status.textContent = "Session check failed: " + error.message;
+        return;
+      }
+
+      if (data.session && data.session.user) {
+        try {
+          await verifyAdmin(data.session.user);
+        } catch (error) {
+          status.textContent = error.message || "Admin check failed.";
+        }
+      }
+    });
   </script>
 </body>
 </html>
