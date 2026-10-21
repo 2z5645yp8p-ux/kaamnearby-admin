@@ -14,16 +14,14 @@
       margin: 0;
       padding: 24px;
     }
-
     main {
-      max-width: 650px;
-      margin: 35px auto;
+      max-width: 700px;
+      margin: 25px auto;
       background: white;
-      padding: 26px;
+      padding: 24px;
       border-radius: 16px;
       box-shadow: 0 4px 24px #00000010;
     }
-
     input, button, select {
       width: 100%;
       padding: 12px;
@@ -32,498 +30,575 @@
       font-size: 16px;
       border-radius: 8px;
     }
-
     input, select {
       border: 1px solid #ccd7d0;
       background: white;
       color: #17382b;
     }
-
     button {
       background: #176b49;
       color: white;
       border: 0;
       cursor: pointer;
     }
-
     button:disabled {
-      opacity: 0.6;
+      opacity: .6;
       cursor: wait;
     }
-
-    #status, #bookingStatus {
-      overflow-wrap: anywhere;
+    .reject-button {
+      background: #a33333;
     }
-
-    .booking-card {
+    .booking-card, .provider-card {
       border: 1px solid #ccd7d0;
       border-radius: 10px;
-      padding: 14px;
+      padding: 15px;
       margin: 14px 0;
       overflow-wrap: anywhere;
     }
-
-    .booking-card h3 {
+    .booking-card h3, .provider-card h3 {
       margin-top: 0;
     }
-
-    .booking-details {
+    .details {
       line-height: 1.8;
+      overflow-wrap: anywhere;
     }
-
     .field-label {
       display: block;
-      margin-top: 16px;
+      margin-top: 15px;
       font-weight: bold;
     }
-
     .earnings {
       border: 1px solid #ccd7d0;
       background: #f7faf8;
       border-radius: 10px;
-      padding: 16px;
-      margin: 16px 0;
+      padding: 15px;
+      margin: 15px 0;
     }
-
     .earnings p {
       margin: 10px 0;
     }
-
     .earnings strong {
       color: #176b49;
     }
-
     .note {
       font-size: 13px;
       line-height: 1.5;
       color: #52665b;
     }
+    hr {
+      border: 0;
+      border-top: 1px solid #e0e7e2;
+      margin: 25px 0;
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>KaamNearby Admin</h1>
-    <p>Sign in with your administrator account.</p>
+<main>
+  <h1>KaamNearby Admin</h1>
+  <p>Sign in with your administrator account.</p>
 
-    <form id="loginForm">
-      <label for="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        autocomplete="username"
-        required
-      >
+  <form id="loginForm">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" required>
 
-      <label for="password">Password</label>
-      <input
-        id="password"
-        type="password"
-        autocomplete="current-password"
-        required
-      >
+    <label for="password">Password</label>
+    <input id="password" type="password"
+      autocomplete="current-password" required>
 
-      <button id="loginButton" type="submit">Login</button>
-    </form>
+    <button id="loginButton" type="submit">Login</button>
+  </form>
 
-    <section id="dashboard" hidden>
-      <h2>Admin access verified</h2>
-      <p id="account"></p>
-      <button id="logoutButton" type="button">Logout</button>
+  <section id="dashboard" hidden>
+    <h2>Admin access verified</h2>
+    <p id="account"></p>
+    <button id="logoutButton" type="button">Logout</button>
 
-      <hr>
+    <hr>
 
-      <h2>Commission Dashboard</h2>
-      <div class="earnings" aria-live="polite">
-        <p>Completed revenue: <strong id="totalRevenue">Rs. 0</strong></p>
-        <p>Your commission (15%): <strong id="totalCommission">Rs. 0</strong></p>
-        <p>Completed bookings with a price: <strong id="pricedBookings">0</strong></p>
-        <p class="note">
-          Commission is an estimate calculated from saved final prices
-          for completed bookings only. It does not mean payment has
-          been collected. This dashboard currently counts up to 100
-          bookings loaded from the database.
-        </p>
-      </div>
+    <h2>Commission Dashboard</h2>
+    <div class="earnings">
+      <p>Completed revenue: <strong id="totalRevenue">Rs. 0</strong></p>
+      <p>Your commission (15%): <strong id="totalCommission">Rs. 0</strong></p>
+      <p>Completed bookings with price:
+        <strong id="pricedBookings">0</strong></p>
+      <p class="note">
+        Commission is calculated from saved final prices for completed
+        bookings only. This is an estimate, not confirmation of payment.
+        The dashboard loads up to 100 bookings.
+      </p>
+    </div>
 
-      <hr>
+    <hr>
 
-      <h2>Customer Bookings</h2>
-      <button id="refreshBookings" type="button">
-        Refresh Bookings
-      </button>
+    <h2>Provider Management</h2>
+    <p>Review providers before approving their public listings.</p>
 
-      <p id="bookingStatus" role="status" aria-live="polite"></p>
-      <div id="bookingList"></div>
-    </section>
+    <label for="providerFilter">Filter providers</label>
+    <select id="providerFilter">
+      <option value="pending">Pending approval</option>
+      <option value="approved">Approved</option>
+      <option value="rejected">Rejected</option>
+      <option value="all">All providers</option>
+    </select>
 
-    <p id="status" role="status" aria-live="polite"></p>
-  </main>
+    <button id="refreshProviders" type="button">
+      Refresh Providers
+    </button>
+    <p id="providerStatus" role="status" aria-live="polite"></p>
+    <div id="providerList"></div>
 
-  <script>
-    const SUPABASE_URL =
-      "https://wbhttdwajcdidkioatqn.supabase.co";
+    <hr>
 
-    const SUPABASE_PUBLISHABLE_KEY =
-      "sb_publishable_BQee1ylNh02Ii4PaM13Ckg_mlBmgrnc";
+    <h2>Customer Bookings</h2>
+    <button id="refreshBookings" type="button">Refresh Bookings</button>
+    <p id="bookingStatus" role="status" aria-live="polite"></p>
+    <div id="bookingList"></div>
+  </section>
 
-    const COMMISSION_RATE = 0.15;
+  <p id="status" role="status" aria-live="polite"></p>
+</main>
 
-    const client = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_PUBLISHABLE_KEY
-    );
+<script>
+  const SUPABASE_URL =
+    "https://wbhttdwajcdidkioatqn.supabase.co";
 
-    const form = document.getElementById("loginForm");
-    const dashboard = document.getElementById("dashboard");
-    const status = document.getElementById("status");
-    const bookingStatus = document.getElementById("bookingStatus");
-    const bookingList = document.getElementById("bookingList");
-    const loginButton = document.getElementById("loginButton");
+  const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_BQee1ylNh02Ii4PaM13Ckg_mlBmgrnc";
 
-    function formatRupees(amount) {
-      return "Rs. " + Number(amount).toLocaleString("en-PK", {
-        maximumFractionDigits: 2
-      });
-    }
+  const COMMISSION_RATE = 0.15;
 
-    function updateEarnings(bookings) {
-      let totalRevenue = 0;
-      let pricedBookings = 0;
+  const client = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
 
-      bookings.forEach(booking => {
-        if (String(booking.status || "").toLowerCase() !== "completed") {
-          return;
-        }
+  const form = document.getElementById("loginForm");
+  const dashboard = document.getElementById("dashboard");
+  const status = document.getElementById("status");
+  const loginButton = document.getElementById("loginButton");
+  const bookingStatus = document.getElementById("bookingStatus");
+  const bookingList = document.getElementById("bookingList");
+  const providerStatus = document.getElementById("providerStatus");
+  const providerList = document.getElementById("providerList");
 
-        if (
-          booking.final_price === null ||
-          booking.final_price === undefined ||
-          booking.final_price === ""
-        ) {
-          return;
-        }
+  let providersCache = [];
 
-        const price = Number(booking.final_price);
-
-        if (!Number.isFinite(price) || price < 0) {
-          return;
-        }
-
-        totalRevenue += price;
-        pricedBookings += 1;
-      });
-
-      const commission = totalRevenue * COMMISSION_RATE;
-
-      document.getElementById("totalRevenue").textContent =
-        formatRupees(totalRevenue);
-
-      document.getElementById("totalCommission").textContent =
-        formatRupees(commission);
-
-      document.getElementById("pricedBookings").textContent =
-        String(pricedBookings);
-    }
-
-    async function verifyAdmin(user) {
-      const { data, error } = await client
-        .from("admin_users")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error("Admin check failed: " + error.message);
-      }
-
-      if (!data) {
-        await client.auth.signOut();
-        throw new Error(
-          "This account is not an authorized admin."
-        );
-      }
-
-      form.hidden = true;
-      dashboard.hidden = false;
-
-      document.getElementById("account").textContent =
-        "Signed in as " + (user.email || "Admin");
-
-      status.textContent = "";
-      await loadBookings();
-    }
-
-    form.addEventListener("submit", async event => {
-      event.preventDefault();
-      loginButton.disabled = true;
-      status.textContent = "Signing in...";
-
-      try {
-        const { data, error } = await client.auth
-          .signInWithPassword({
-            email: document.getElementById("email").value.trim(),
-            password: document.getElementById("password").value
-          });
-
-        if (error) {
-          throw error;
-        }
-
-        await verifyAdmin(data.user);
-      } catch (error) {
-        status.textContent = error.message || "Login failed.";
-      } finally {
-        loginButton.disabled = false;
-      }
+  function formatRupees(amount) {
+    return "Rs. " + Number(amount).toLocaleString("en-PK", {
+      maximumFractionDigits: 2
     });
+  }
 
-    document.getElementById("logoutButton").addEventListener(
-      "click",
-      async () => {
-        status.textContent = "Signing out...";
+  function updateEarnings(bookings) {
+    let revenue = 0;
+    let count = 0;
 
-        const { error } = await client.auth.signOut();
-
-        if (error) {
-          status.textContent = "Logout failed: " + error.message;
-          return;
-        }
-
-        dashboard.hidden = true;
-        form.hidden = false;
-        document.getElementById("password").value = "";
-        bookingList.replaceChildren();
-        bookingStatus.textContent = "";
-        updateEarnings([]);
-        status.textContent = "Logged out.";
-      }
-    );
-
-    async function loadBookings() {
-      const refreshButton =
-        document.getElementById("refreshBookings");
-
-      refreshButton.disabled = true;
-      bookingStatus.textContent = "Loading bookings...";
-      bookingList.replaceChildren();
-
-      try {
-        const { data, error } = await client
-          .from("bookings")
-          .select("*")
-          .limit(100);
-
-        if (error) {
-          bookingStatus.textContent =
-            "Could not load bookings: " + error.message;
-          return;
-        }
-
-        if (!data || data.length === 0) {
-          bookingStatus.textContent = "No bookings found.";
-          updateEarnings([]);
-          return;
-        }
-
-        updateEarnings(data);
-
-        bookingStatus.textContent =
-          "Bookings found: " + data.length;
-
-        data.forEach(booking => {
-          const card = document.createElement("div");
-          card.className = "booking-card";
-
-          const heading = document.createElement("h3");
-          heading.textContent =
-            booking.customer_name || "Customer";
-
-          const details = document.createElement("p");
-          details.className = "booking-details";
-
-          const detailsText = () => [
-            "Phone: " + (booking.customer_phone || "N/A"),
-            "Service: " + (booking.service_name || "N/A"),
-            "Area: " + (booking.customer_area || "N/A"),
-            "Date: " + (booking.preferred_date || "N/A"),
-            "Status: " + (booking.status || "pending"),
-            "Final price: " +
-              (
-                booking.final_price !== null &&
-                booking.final_price !== undefined &&
-                booking.final_price !== ""
-              ? formatRupees(booking.final_price)
-              : "Not entered"
-              )
-          ].join(" | ");
-
-          details.textContent = detailsText();
-
-          const priceLabel = document.createElement("label");
-          priceLabel.className = "field-label";
-          priceLabel.textContent = "Final agreed price (Rs.)";
-
-          const priceInput = document.createElement("input");
-          priceInput.type = "number";
-          priceInput.min = "0";
-          priceInput.step = "0.01";
-          priceInput.placeholder = "Enter final price";
-          priceInput.setAttribute(
-            "aria-label",
-            "Final agreed price for " +
-              (booking.customer_name || "customer")
-          );
-          priceInput.value =
-            booking.final_price !== null &&
-            booking.final_price !== undefined
-              ? String(booking.final_price)
-              : "";
-
-          const statusLabel = document.createElement("label");
-          statusLabel.className = "field-label";
-          statusLabel.textContent = "Booking status";
-
-          const statusSelect = document.createElement("select");
-          statusSelect.setAttribute(
-            "aria-label",
-            "Booking status for " +
-              (booking.customer_name || "customer")
-          );
-
-          const currentStatus =
-            String(booking.status || "pending").toLowerCase();
-
-          const statuses = [
-            "pending",
-            "accepted",
-            "completed",
-            "cancelled"
-          ];
-
-          if (!statuses.includes(currentStatus)) {
-            statuses.push(currentStatus);
-          }
-
-          statuses.forEach(value => {
-            const option = document.createElement("option");
-            option.value = value;
-            option.textContent =
-              value.charAt(0).toUpperCase() + value.slice(1);
-            option.selected = value === currentStatus;
-            statusSelect.appendChild(option);
-          });
-
-          const saveButton = document.createElement("button");
-          saveButton.type = "button";
-          saveButton.textContent = "Save Price & Status";
-
-          const statusMessage = document.createElement("p");
-          statusMessage.setAttribute("role", "status");
-          statusMessage.setAttribute("aria-live", "polite");
-
-          saveButton.addEventListener("click", async () => {
-            const priceText = priceInput.value.trim();
-
-            let finalPrice = null;
-
-            if (priceText !== "") {
-              finalPrice = Number(priceText);
-
-              if (
-                !Number.isFinite(finalPrice) ||
-                finalPrice < 0
-              ) {
-                statusMessage.textContent =
-                  "Please enter a valid price of Rs. 0 or more.";
-                return;
-              }
-            }
-
-            saveButton.disabled = true;
-            statusSelect.disabled = true;
-            priceInput.disabled = true;
-            statusMessage.textContent = "Saving price and status...";
-
-            try {
-              const { data: updatedRows, error } = await client
-                .from("bookings")
-                .update({
-                  status: statusSelect.value,
-                  final_price: finalPrice
-                })
-                .eq("id", booking.id)
-                .select("id, status, final_price");
-
-              if (error) {
-                throw error;
-              }
-
-              if (!updatedRows || updatedRows.length === 0) {
-                throw new Error(
-                  "No booking was updated. Check database permissions."
-                );
-              }
-
-              booking.status = updatedRows[0].status;
-              booking.final_price = updatedRows[0].final_price;
-
-              details.textContent = detailsText();
-              updateEarnings(data);
-
-              statusMessage.textContent =
-                "Price and status saved successfully.";
-
-            } catch (error) {
-              statusMessage.textContent =
-                "Save failed: " + error.message;
-            } finally {
-              saveButton.disabled = false;
-              statusSelect.disabled = false;
-              priceInput.disabled = false;
-            }
-          });
-
-          card.append(
-            heading,
-            details,
-            priceLabel,
-            priceInput,
-            statusLabel,
-            statusSelect,
-            saveButton,
-            statusMessage
-          );
-
-          bookingList.appendChild(card);
-        });
-
-      } catch (error) {
-        bookingStatus.textContent =
-          "Could not load bookings: " + error.message;
-      } finally {
-        refreshButton.disabled = false;
-      }
-    }
-
-    document.getElementById("refreshBookings").addEventListener(
-      "click",
-      loadBookings
-    );
-
-    client.auth.getSession().then(async ({ data, error }) => {
-      if (error) {
-        status.textContent = "Session check failed: " + error.message;
+    bookings.forEach(booking => {
+      if (String(booking.status || "").toLowerCase() !== "completed") {
         return;
       }
 
-      if (data.session && data.session.user) {
-        try {
-          await verifyAdmin(data.session.user);
-        } catch (error) {
-          status.textContent = error.message || "Admin check failed.";
-        }
+      if (
+        booking.final_price === null ||
+        booking.final_price === undefined ||
+        booking.final_price === ""
+      ) {
+        return;
       }
+
+      const price = Number(booking.final_price);
+
+      if (!Number.isFinite(price) || price < 0) return;
+
+      revenue += price;
+      count += 1;
     });
-  </script>
+
+    document.getElementById("totalRevenue").textContent =
+      formatRupees(revenue);
+    document.getElementById("totalCommission").textContent =
+      formatRupees(revenue * COMMISSION_RATE);
+    document.getElementById("pricedBookings").textContent = String(count);
+  }
+
+  async function verifyAdmin(user) {
+    const { data, error } = await client
+      .from("admin_users")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error("Admin check failed: " + error.message);
+    }
+
+    if (!data) {
+      await client.auth.signOut();
+      throw new Error("This account is not an authorized admin.");
+    }
+
+    form.hidden = true;
+    dashboard.hidden = false;
+    document.getElementById("account").textContent =
+      "Signed in as " + (user.email || "Admin");
+    status.textContent = "";
+
+    await Promise.all([loadBookings(), loadProviders()]);
+  }
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    loginButton.disabled = true;
+    status.textContent = "Signing in...";
+
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: document.getElementById("email").value.trim(),
+        password: document.getElementById("password").value
+      });
+
+      if (error) throw error;
+      await verifyAdmin(data.user);
+    } catch (error) {
+      status.textContent = error.message || "Login failed.";
+    } finally {
+      loginButton.disabled = false;
+    }
+  });
+
+  document.getElementById("logoutButton").addEventListener(
+    "click", async () => {
+      status.textContent = "Signing out...";
+      const { error } = await client.auth.signOut();
+
+      if (error) {
+        status.textContent = "Logout failed: " + error.message;
+        return;
+      }
+
+      dashboard.hidden = true;
+      form.hidden = false;
+      document.getElementById("password").value = "";
+      bookingList.replaceChildren();
+      providerList.replaceChildren();
+      bookingStatus.textContent = "";
+      providerStatus.textContent = "";
+      updateEarnings([]);
+      providersCache = [];
+      status.textContent = "Logged out.";
+    }
+  );
+
+  async function loadBookings() {
+    const button = document.getElementById("refreshBookings");
+    button.disabled = true;
+    bookingStatus.textContent = "Loading bookings...";
+    bookingList.replaceChildren();
+
+    try {
+      const { data, error } = await client
+        .from("bookings")
+        .select("*")
+        .limit(100);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        bookingStatus.textContent = "No bookings found.";
+        updateEarnings([]);
+        return;
+      }
+
+      updateEarnings(data);
+      bookingStatus.textContent = "Bookings found: " + data.length;
+
+      data.forEach(booking => {
+        const card = document.createElement("div");
+        card.className = "booking-card";
+
+        const heading = document.createElement("h3");
+        heading.textContent = booking.customer_name || "Customer";
+
+        const details = document.createElement("p");
+        details.className = "details";
+
+        const detailsText = () => [
+          "Phone: " + (booking.customer_phone || "N/A"),
+          "Service: " + (booking.service_name || "N/A"),
+          "Area: " + (booking.customer_area || "N/A"),
+          "Date: " + (booking.preferred_date || "N/A"),
+          "Status: " + (booking.status || "pending"),
+          "Final price: " +
+            (booking.final_price !== null &&
+             booking.final_price !== undefined &&
+             booking.final_price !== ""
+              ? formatRupees(booking.final_price)
+              : "Not entered")
+        ].join(" | ");
+
+        details.textContent = detailsText();
+
+        const priceLabel = document.createElement("label");
+        priceLabel.className = "field-label";
+        priceLabel.textContent = "Final agreed price (Rs.)";
+
+        const priceInput = document.createElement("input");
+        priceInput.type = "number";
+        priceInput.min = "0";
+        priceInput.step = "0.01";
+        priceInput.placeholder = "Enter final price";
+        priceInput.value =
+          booking.final_price == null ? "" : String(booking.final_price);
+
+        const statusLabel = document.createElement("label");
+        statusLabel.className = "field-label";
+        statusLabel.textContent = "Booking status";
+
+        const statusSelect = document.createElement("select");
+        const current = String(booking.status || "pending").toLowerCase();
+        const options = ["pending", "accepted", "completed", "cancelled"];
+
+        if (!options.includes(current)) options.push(current);
+
+        options.forEach(value => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent =
+            value.charAt(0).toUpperCase() + value.slice(1);
+          option.selected = value === current;
+          statusSelect.appendChild(option);
+        });
+
+        const save = document.createElement("button");
+        save.type = "button";
+        save.textContent = "Save Price & Status";
+
+        const message = document.createElement("p");
+        message.setAttribute("role", "status");
+
+        save.addEventListener("click", async () => {
+          const text = priceInput.value.trim();
+          let finalPrice = null;
+
+          if (text !== "") {
+            finalPrice = Number(text);
+            if (!Number.isFinite(finalPrice) || finalPrice < 0) {
+              message.textContent = "Enter a valid price of Rs. 0 or more.";
+              return;
+            }
+          }
+
+          save.disabled = true;
+          priceInput.disabled = true;
+          statusSelect.disabled = true;
+          message.textContent = "Saving...";
+
+          try {
+            const { data: rows, error } = await client
+              .from("bookings")
+              .update({
+                status: statusSelect.value,
+                final_price: finalPrice
+              })
+              .eq("id", booking.id)
+              .select("id, status, final_price");
+
+            if (error) throw error;
+            if (!rows || rows.length === 0) {
+              throw new Error("No booking updated. Check database permissions.");
+            }
+
+            booking.status = rows[0].status;
+            booking.final_price = rows[0].final_price;
+            details.textContent = detailsText();
+            updateEarnings(data);
+            message.textContent = "Price and status saved successfully.";
+          } catch (error) {
+            message.textContent = "Save failed: " + error.message;
+          } finally {
+            save.disabled = false;
+            priceInput.disabled = false;
+            statusSelect.disabled = false;
+          }
+        });
+
+        card.append(
+          heading, details, priceLabel, priceInput,
+          statusLabel, statusSelect, save, message
+        );
+        bookingList.appendChild(card);
+      });
+    } catch (error) {
+      bookingStatus.textContent = "Could not load bookings: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function renderProviders() {
+    providerList.replaceChildren();
+
+    const filter = document.getElementById("providerFilter").value;
+    const list = providersCache.filter(provider => {
+      const state = String(provider.status || "pending").toLowerCase();
+      return filter === "all" || state === filter;
+    });
+
+    if (list.length === 0) {
+      providerList.textContent = "No providers in this category.";
+      return;
+    }
+
+    list.forEach(provider => {
+      const card = document.createElement("div");
+      card.className = "provider-card";
+
+      const heading = document.createElement("h3");
+      heading.textContent = provider.name || "Unnamed provider";
+
+      const details = document.createElement("p");
+      details.className = "details";
+      details.textContent = [
+        "Service: " + (provider.service_type || provider.category || "N/A"),
+        "Category: " + (provider.category || "N/A"),
+        "Area: " + (provider.area || "N/A"),
+        "Phone: " + (provider.phone || "N/A"),
+        "WhatsApp: " + (provider.whatsapp || "N/A"),
+        "Description: " + (provider.description || "N/A"),
+        "Current status: " + (provider.status || "pending")
+      ].join(" | ");
+
+      card.append(heading, details);
+
+      const state = String(provider.status || "pending").toLowerCase();
+
+      if (state !== "approved") {
+        const approve = document.createElement("button");
+        approve.type = "button";
+        approve.textContent = "Approve Provider";
+        approve.addEventListener("click", () => {
+          changeProviderStatus(provider, "approved", approve, reject);
+        });
+
+        const reject = document.createElement("button");
+        reject.type = "button";
+        reject.className = "reject-button";
+        reject.textContent = "Reject Provider";
+        reject.addEventListener("click", () => {
+          changeProviderStatus(provider, "rejected", approve, reject);
+        });
+
+        card.append(approve, reject);
+      } else {
+        const reject = document.createElement("button");
+        reject.type = "button";
+        reject.className = "reject-button";
+        reject.textContent = "Reject Provider";
+        reject.addEventListener("click", () => {
+          changeProviderStatus(provider, "rejected", null, reject);
+        });
+        card.appendChild(reject);
+      }
+
+      if (state !== "pending") {
+        const pending = document.createElement("button");
+        pending.type = "button";
+        pending.textContent = "Return to Pending";
+        pending.addEventListener("click", () => {
+          changeProviderStatus(provider, "pending", pending, null);
+        });
+        card.appendChild(pending);
+      }
+
+      providerList.appendChild(card);
+    });
+  }
+
+  async function loadProviders() {
+    const button = document.getElementById("refreshProviders");
+    button.disabled = true;
+    providerStatus.textContent = "Loading providers...";
+    providerList.replaceChildren();
+
+    try {
+      const { data, error } = await client
+        .from("providers")
+        .select("*")
+        .limit(100);
+
+      if (error) throw error;
+
+      providersCache = data || [];
+      providerStatus.textContent =
+        "Providers found: " + providersCache.length;
+      renderProviders();
+    } catch (error) {
+      providerStatus.textContent =
+        "Could not load providers: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function changeProviderStatus(provider, newStatus, buttonA, buttonB) {
+    if (buttonA) buttonA.disabled = true;
+    if (buttonB) buttonB.disabled = true;
+    providerStatus.textContent =
+      "Updating " + (provider.name || "provider") + "...";
+
+    try {
+      const { data, error } = await client
+        .from("providers")
+        .update({ status: newStatus })
+        .eq("id", provider.id)
+        .select("*");
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          "No provider updated. Check Supabase permissions and provider ID."
+        );
+      }
+
+      const index = providersCache.findIndex(item => item.id === provider.id);
+      if (index !== -1) providersCache[index] = data[0];
+
+      providerStatus.textContent =
+        (provider.name || "Provider") + " status changed to " + newStatus + ".";
+      renderProviders();
+    } catch (error) {
+      providerStatus.textContent =
+        "Provider update failed: " + error.message;
+      if (buttonA) buttonA.disabled = false;
+      if (buttonB) buttonB.disabled = false;
+    }
+  }
+
+  document.getElementById("refreshBookings").addEventListener(
+    "click", loadBookings
+  );
+  document.getElementById("refreshProviders").addEventListener(
+    "click", loadProviders
+  );
+  document.getElementById("providerFilter").addEventListener(
+    "change", renderProviders
+  );
+
+  client.auth.getSession().then(async ({ data, error }) => {
+    if (error) {
+      status.textContent = "Session check failed: " + error.message;
+      return;
+    }
+
+    if (data.session && data.session.user) {
+      try {
+        await verifyAdmin(data.session.user);
+      } catch (error) {
+        status.textContent = error.message || "Admin check failed.";
+      }
+    }
+  });
+</script>
 </body>
 </html>
