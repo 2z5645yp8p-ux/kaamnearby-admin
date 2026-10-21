@@ -236,8 +236,103 @@ statusMessage.style.margin = "8px 0";
 
     }
 
-    document.getElementById("refreshBookings").addEventListener(
-      "click", loadBookings
+  
+async function loadBookings() {
+  const bookingStatus = document.getElementById("bookingStatus");
+  const bookingList = document.getElementById("bookingList");
+
+  bookingStatus.textContent = "Loading bookings...";
+  bookingList.replaceChildren();
+
+  const { data, error } = await client
+    .from("bookings")
+    .select("*")
+    .limit(100);
+
+  if (error) {
+    bookingStatus.textContent =
+      "Could not load bookings: " + error.message;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    bookingStatus.textContent = "No bookings found.";
+    return;
+  }
+
+  bookingStatus.textContent = "Bookings found: " + data.length;
+
+  data.forEach(booking => {
+    const card = document.createElement("div");
+    const heading = document.createElement("h3");
+    heading.textContent = booking.customer_name || "Customer";
+
+    const details = document.createElement("p");
+    details.textContent = [
+      "Phone: " + (booking.customer_phone || "N/A"),
+      "Service: " + (booking.service_name || "N/A"),
+      "Area: " + (booking.customer_area || "N/A"),
+      "Date: " + (booking.preferred_date || "N/A"),
+      "Status: " + (booking.status || "Pending")
+    ].join(" | ");
+
+    const statusSelect = document.createElement("select");
+    statusSelect.style.display = "block";
+    statusSelect.style.margin = "10px 0";
+    statusSelect.style.padding = "8px";
+    statusSelect.style.width = "100%";
+
+    ["pending", "accepted", "completed", "cancelled"].forEach(status => {
+      const option = document.createElement("option");
+      option.value = status;
+      option.textContent =
+        status.charAt(0).toUpperCase() + status.slice(1);
+      option.selected =
+        (booking.status || "pending").toLowerCase() === status;
+      statusSelect.appendChild(option);
+    });
+
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Update Status";
+    saveButton.style.display = "block";
+    saveButton.style.margin = "10px 0";
+    saveButton.style.padding = "8px 14px";
+
+    const statusMessage = document.createElement("p");
+    statusMessage.style.margin = "8px 0";
+
+    saveButton.addEventListener("click", async () => {
+      saveButton.disabled = true;
+      statusMessage.textContent = "Updating...";
+
+      const { error } = await client
+        .from("bookings")
+        .update({ status: statusSelect.value })
+        .eq("id", booking.id);
+
+      saveButton.disabled = false;
+
+      if (error) {
+        statusMessage.textContent =
+          "Update failed: " + error.message;
+        return;
+      }
+
+      await loadBookings();
+    });
+
+    card.append(heading, details, statusSelect, saveButton, statusMessage);
+    card.style.border = "1px solid #ccc";
+    card.style.padding = "12px";
+    card.style.margin = "12px 0";
+    bookingList.appendChild(card);
+  });
+}
+
+document.getElementById("refreshBookings").addEventListener(
+  "click", loadBookings
+);
+
     );
     </script>
 </body>
