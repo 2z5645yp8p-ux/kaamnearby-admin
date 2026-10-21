@@ -56,11 +56,19 @@
       <button id="loginButton" type="submit">Login</button>
     </form>
 
-    <section id="dashboard" hidden>
-      <h2>Admin access verified</h2>
-      <p id="account"></p>
-      <button id="logoutButton" type="button">Logout</button>
-    </section>
+   
+<section id="dashboard" hidden>
+  <h2>Admin access verified</h2>
+  <p id="account"></p>
+  <button id="logoutButton" type="button">Logout</button>
+
+  <hr>
+  <h2>Customer Bookings</h2>
+  <button id="refreshBookings" type="button">Refresh Bookings</button>
+  <p id="bookingStatus" role="status"></p>
+  <div id="bookingList"></div>
+</section>
+
 
     <p id="status" role="status" aria-live="polite"></p>
   </main>
@@ -132,6 +140,61 @@ if (error) {
         status.textContent = "Logged out.";
       }
     );
+      
+    );
+
+    async function loadBookings() {
+      const bookingStatus = document.getElementById("bookingStatus");
+      const bookingList = document.getElementById("bookingList");
+
+      bookingStatus.textContent = "Loading bookings...";
+      bookingList.replaceChildren();
+
+      const { data, error } = await client
+        .from("bookings")
+        .select("*")
+        .limit(100);
+
+      if (error) {
+        bookingStatus.textContent =
+          "Could not load bookings: " + error.message;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        bookingStatus.textContent = "No bookings found.";
+        return;
+      }
+
+      bookingStatus.textContent = "Bookings found: " + data.length;
+
+      data.forEach(booking => {
+        const card = document.createElement("div");
+        const heading = document.createElement("h3");
+        heading.textContent = booking.customer_name || "Customer";
+
+        const details = document.createElement("p");
+        details.textContent = [
+          "Phone: " + (booking.customer_phone || "N/A"),
+          "Service: " + (booking.service_name || "N/A"),
+          "Area: " + (booking.customer_area || "N/A"),
+          "Date: " + (booking.preferred_date || "N/A"),
+          "Status: " + (booking.status || "Pending")
+        ].join(" | ");
+
+        card.append(heading, details);
+        card.style.border = "1px solid #ccc";
+        card.style.padding = "12px";
+        card.style.margin = "12px 0";
+        bookingList.appendChild(card);
+      });
+    }
+
+    document.getElementById("refreshBookings").addEventListener(
+      "click", loadBookings
+    );
+  </script>
+
   </script>
 </body>
 </html>
