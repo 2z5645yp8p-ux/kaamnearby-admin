@@ -317,7 +317,7 @@ async function loadBookings() {
           "Update failed: " + error.message;
         return;
       }
-
+ 
       await loadBookings();
     });
 
