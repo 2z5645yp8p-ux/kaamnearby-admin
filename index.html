@@ -106,6 +106,7 @@ if (error) {
 
       form.hidden = true;
       dashboard.hidden = false;
+              loadBookings();
       document.getElementById("account").textContent =
         "Signed in as " + (user.email || "Admin");
       status.textContent = "";
