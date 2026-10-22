@@ -221,26 +221,29 @@
     document.getElementById("pricedBookings").textContent = String(count);
   }
 
+ 
   async function verifyAdmin(user) {
     const { data, error } = await client
-      .from("admin_users")
-      .select("user_id")
-      .eq("user_id", user.id)
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
       .maybeSingle();
 
     if (error) {
-      throw new Error("Admin check failed: " + error.message);
+      throw new Error("Admin role check failed: " + error.message);
     }
 
-    if (!data) {
+    if (!data || data.role !== "admin") {
       await client.auth.signOut();
       throw new Error("This account is not an authorized admin.");
     }
 
     form.hidden = true;
     dashboard.hidden = false;
+
     document.getElementById("account").textContent =
       "Signed in as " + (user.email || "Admin");
+
     status.textContent = "";
 
     await Promise.all([loadBookings(), loadProviders()]);
